@@ -1,0 +1,300 @@
+SELECT
+  *
+FROM
+  "HEDIS"."PUBLIC"."MEASURE_DATA"
+LIMIT
+  10;
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET CONTRACT_NAME = INITCAP("CONTRACT_NAME", '');
+/* DISTINCT CONTRACT_IDs*/
+SELECT CONTRACT_ID, COUNT(*) AS occurrences
+FROM "HEDIS"."PUBLIC"."MEASURE_DATA"
+GROUP BY CONTRACT_ID
+HAVING COUNT(*) > 1;
+
+/*distinct organizations*/
+SELECT ORGANIZATION_TYPE, ORGANIZATION_MARKETING_NAME, PARENT_ORGANIZATION  ,COUNT(*)as count
+FROM "HEDIS"."PUBLIC"."MEASURE_DATA"
+GROUP BY ORGANIZATION_TYPE, ORGANIZATION_MARKETING_NAME, PARENT_ORGANIZATION
+ORDER BY count DESC;
+/* OUTLIERS DETECTION */
+SELECT CONTRACT_ID, ORGANIZATION_TYPE, PARENT_ORGANIZATION, "C01: Breast Cancer Screening"
+FROM "HEDIS"."PUBLIC"."MEASURE_DATA"
+GROUP BY 1,2,3,4
+ORDER BY 4 DESC
+LIMIT 10;
+/* Average Breast_Cancer_Screening over all and which parent organization has high score above average*/
+SELECT 
+  CONTRACT_ID, 
+  ORGANIZATION_TYPE, 
+  PARENT_ORGANIZATION, 
+  "C01: Breast Cancer Screening"
+FROM "HEDIS"."PUBLIC"."MEASURE_DATA"
+WHERE "C01: Breast Cancer Screening" > (
+    SELECT AVG("C01: Breast Cancer Screening") 
+    FROM "HEDIS"."PUBLIC"."MEASURE_DATA"
+);
+/* AVG SCORE C02: Colorectal Cancer Screening */
+WITH Avg_CCS_Score AS (
+  SELECT ROUND(AVG("C02: Colorectal Cancer Screening"),2) AS Avg_CCS
+  FROM "HEDIS"."PUBLIC"."MEASURE_DATA"
+)
+
+SELECT 
+  m.CONTRACT_ID, 
+  m.ORGANIZATION_TYPE, 
+  m.PARENT_ORGANIZATION,
+  m."C02: Colorectal Cancer Screening",
+  a.Avg_CCS
+FROM "HEDIS"."PUBLIC"."MEASURE_DATA" m,
+     Avg_CCS_Score a
+WHERE m."C02: Colorectal Cancer Screening" > a.Avg_CCS;
+/*Vaccine Average*/
+WITH Avg_AFV_Score AS (
+  SELECT ROUND(AVG("C03: Annual Flu Vaccine"),2) AS Avg_AFV
+  FROM "HEDIS"."PUBLIC"."MEASURE_DATA"
+)
+
+SELECT 
+  m.CONTRACT_ID, 
+  m.ORGANIZATION_TYPE, 
+  m.PARENT_ORGANIZATION,
+  m."C03: Annual Flu Vaccine",
+  a.Avg_AFV
+FROM "HEDIS"."PUBLIC"."MEASURE_DATA" m,
+     Avg_AFV_Score a
+WHERE m."C03: Annual Flu Vaccine" > a.Avg_AFV;
+/*Physical activity average */
+WITH Avg_MPA_Score AS (
+  SELECT ROUND(AVG("C04: Monitoring Physical Activity"),2) AS Avg_MPA
+  FROM "HEDIS"."PUBLIC"."MEASURE_DATA"
+)
+
+SELECT 
+  m.CONTRACT_ID, 
+  m.ORGANIZATION_TYPE, 
+  m.PARENT_ORGANIZATION,
+  m."C04: Monitoring Physical Activity",
+  a.Avg_MPA
+FROM "HEDIS"."PUBLIC"."MEASURE_DATA" m,
+     Avg_MPA_Score a
+WHERE m."C04: Monitoring Physical Activity" > a.Avg_MPA;
+/*C05: Special Needs Plan (SNP) Care AVG */
+WITH Avg_SNP_Score AS (
+  SELECT ROUND(AVG("C05: Special Needs Plan (SNP) Care Management"),2) AS Avg_SNP
+  FROM "HEDIS"."PUBLIC"."MEASURE_DATA"
+)
+
+SELECT 
+  m.CONTRACT_ID, 
+  m.ORGANIZATION_TYPE, 
+  m.PARENT_ORGANIZATION,
+  m."C05: Special Needs Plan (SNP) Care Management",
+  a.Avg_SNP
+FROM "HEDIS"."PUBLIC"."MEASURE_DATA" m,
+     Avg_SNP_Score a
+WHERE m."C05: Special Needs Plan (SNP) Care Management" > a.Avg_SNP;
+
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD "HD1: Staying Healthy: Screenings, Tests and Vaccines" FLOAT;
+
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET "HD1: Staying Healthy: Screenings, Tests and Vaccines" = (
+    COALESCE("C01: Breast Cancer Screening", 0) +
+    COALESCE("C02: Colorectal Cancer Screening", 0) +
+    COALESCE("C03: Annual Flu Vaccine", 0) +
+    COALESCE("C04: Monitoring Physical Activity", 0)
+) / 4.0;
+/* HD2: Managing Chronic (Long Term) Conditions	*/
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD "HD2: Managing Chronic (Long Term) Conditions" FLOAT;
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET "HD2: Managing Chronic (Long Term) Conditions" = (
+    COALESCE("C01: Breast Cancer Screening", 0) +
+    COALESCE("C02: Colorectal Cancer Screening", 0) +
+    COALESCE("C03: Annual Flu Vaccine", 0) +
+    COALESCE("C04: Monitoring Physical Activity", 0)
+) / 4.0;
+/*H2*/
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET "HD2: Managing Chronic (Long Term) Conditions" = (
+    COALESCE("C05: Special Needs Plan (SNP) Care Management", 0) +
+    COALESCE("C06: Care for Older Adults Medication Review", 0) +
+    COALESCE("C07: Care for Older Adults Pain Assessment", 0) +
+    COALESCE("C08: Osteoporosis Management in Women who had a Fracture", 0) +
+    COALESCE("C09: Diabetes Care Eye Exam", 0) +
+    COALESCE("C10: Diabetes Care Blood Sugar Controlled", 0) +
+    COALESCE("C11: Controlling High Blood Pressure", 0) +
+    COALESCE("C12: Reducing the Risk of Falling", 0) +
+    COALESCE("C13: Improving Bladder Control", 0) +
+     COALESCE("C14: Medication Reconciliation Post-Discharge", 0) +
+    COALESCE("C15: Plan All-Cause Readmissions", 0) +
+    COALESCE("C16: Statin Therapy for Patients with Cardiovascular Disease", 0) +
+    COALESCE("C17: Transitions of Care", 0) +
+    COALESCE("C18: Follow-up after Emergency Department Visit for People with Multiple High-Risk Chronic Conditions", 0)
+) / 14.0;
+/* HD3 Column */
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD "HD3: Member Experience Plan" FLOAT;
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET "HD3: Member Experience Plan" = (
+COALESCE("C19: Getting Needed Care",0) +
+    COALESCE("C20: Getting Appointments and Care Quickly", 0) +
+    COALESCE("C21: Customer Service", 0) +
+    COALESCE("C22: Rating of Health Care Quality", 0) +
+    COALESCE("C23: Rating of Health Plan", 0) +
+    COALESCE("C24: Care Coordination", 0)
+   ) / 6.0;
+/HD4*/
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD "HD4: Member Complaints and Changes in the Health Plan's Performance" FLOAT;	
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET "HD4: Member Complaints and Changes in the Health Plan's Performance" = (
+COALESCE("C25: Complaints about the Health Plan",0) +
+    COALESCE("C26: Members Choosing to Leave the Plan", 0) +
+    COALESCE("C27: Health Plan Quality Improvement", 0)
+) / 3.0;
+/* HD5 */
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD "HD5: Health Plan Customer Service" FLOAT;
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET "HD5: Health Plan Customer Service" = (
+COALESCE("C28: Plan Makes Timely Decisions about Appeals", 0)+
+COALESCE("C29: Reviewing Appeals Decisions", 0)+
+COALESCE("C30: Call Center Foreign Language Interpreter and TTY Availability", 0)
+)/ 3.0;
+
+SHOW COLUMNS IN MEASURE_DATA;
+/*DD1*/
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD "DD1: Drug Plan Customer Service" FLOAT;
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET "DD1: Drug Plan Customer Service" = (
+COALESCE("D01: Call Center Foreign Language Interpreter and TTY Availability", 0)
+)/ 1.0;
+/*DD2*/
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD "DD2: Member Complaints and Changes in the Drug Plan’s Performance" FLOAT;
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET "DD2: Member Complaints and Changes in the Drug Plan’s Performance" = (
+COALESCE("D02: Complaints about the Drug Plan", 0)+
+COALESCE("D03: Members Choosing to Leave the Plan",0)+
+COALESCE("D04: Drug Plan Quality Improvement", 0)
+)/ 3.0;
+/*DD3*/
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD "DD3: DD3: Member Experience with the Drug Plan" FLOAT;
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET "DD3: DD3: Member Experience with the Drug Plan" = (
+COALESCE("D05: Rating of Drug Plan", 0)+
+COALESCE("D06: Getting Needed Prescription Drugs",0)
+)/ 2.0;
+/*DD4*/
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD "DD4: Drug Safety and Accuracy of Drug Pricing" FLOAT;
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET "DD4: Drug Safety and Accuracy of Drug Pricing" = (
+COALESCE("D07: MPF Price Accuracy", 0)+
+COALESCE("D08: Medication Adherence for Diabetes Medications",0)+
+COALESCE("D09: Medication Adherence for Hypertension (RAS antagonists)", 0)+
+COALESCE("D10: Medication Adherence for Cholesterol (Statins)", 0)+
+COALESCE("D11: MTM Program Completion Rate for CMR", 0)+
+COALESCE("D12: Statin Use in Persons with Diabetes (SUPD)",0)
+)/ 6.0;
+SELECT * FROM "HEDIS"."PUBLIC"."MEASURE_DATA";
+/* HD1 STAR */
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD "HD1_STAR" FLOAT;
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET HD1_STAR = CASE
+  WHEN "HD1: Staying Healthy: Screenings, Tests and Vaccines" < 0.53 THEN 1
+  WHEN "HD1: Staying Healthy: Screenings, Tests and Vaccines" < 0.67 THEN 2
+  WHEN "HD1: Staying Healthy: Screenings, Tests and Vaccines" < 0.75 THEN 3
+  WHEN "HD1: Staying Healthy: Screenings, Tests and Vaccines" < 0.82 THEN 4
+  ELSE 5
+END;
+/*HD2 Star */
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD COLUMN HD2_STAR INT;
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET HD2_STAR = CASE
+  WHEN "HD2: Managing Chronic (Long Term) Conditions" < 46 THEN 1
+  WHEN "HD2: Managing Chronic (Long Term) Conditions" < 62 THEN 2
+  WHEN "HD2: Managing Chronic (Long Term) Conditions" < 76 THEN 3
+  WHEN "HD2: Managing Chronic (Long Term) Conditions" < 89 THEN 4
+  ELSE 5
+END;
+/hd3 star*/
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD COLUMN HD3_STAR INT;
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET HD3_STAR = CASE
+  WHEN "HD3: Member Experience Plan" < 0.77 THEN 1
+  WHEN "HD3: Member Experience Plan" >= 0.77 AND "HD3: Member Experience Plan" < 0.79 THEN 2
+  WHEN "HD3: Member Experience Plan" >= 0.79 AND "HD3: Member Experience Plan" < 0.82 THEN 3
+  WHEN "HD3: Member Experience Plan" >= 0.82 AND "HD3: Member Experience Plan" < 0.83 THEN 4
+  WHEN "HD3: Member Experience Plan" >= 0.83 THEN 5
+  ELSE NULL
+END;
+show columns in MEASURE_DATA;
+/*HD4 Star*/
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD COLUMN HD4_STAR INT;
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET HD4_STAR = CASE
+  WHEN "HD4: Member Complaints and Changes in the Health Plan's Performance" > 1.39 THEN 1
+  WHEN "HD4: Member Complaints and Changes in the Health Plan's Performance" > 0.76 AND "HD4: Member Complaints and Changes in the Health Plan's Performance" <= 1.39 THEN 2
+  WHEN "HD4: Member Complaints and Changes in the Health Plan's Performance" > 0.37 AND "HD4: Member Complaints and Changes in the Health Plan's Performance" <= 0.76 THEN 3
+  WHEN "HD4: Member Complaints and Changes in the Health Plan's Performance" > 0.12 AND "HD4: Member Complaints and Changes in the Health Plan's Performance" <= 0.37 THEN 4
+  WHEN "HD4: Member Complaints and Changes in the Health Plan's Performance" <= 0.12 THEN 5
+  ELSE NULL
+END;
+/*HD5 Star*/
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD COLUMN HD5_STAR INT;
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET HD5_STAR = CASE
+  WHEN "HD5: Health Plan Customer Service" < 0.69 THEN 1
+  WHEN "HD5: Health Plan Customer Service" >= 0.69 AND "HD5: Health Plan Customer Service" < 0.85 THEN 2
+  WHEN "HD5: Health Plan Customer Service" >= 0.85 AND "HD5: Health Plan Customer Service" < 0.95 THEN 3
+  WHEN "HD5: Health Plan Customer Service" >= 0.95 AND "HD5: Health Plan Customer Service" < 0.99 THEN 4
+  WHEN "HD5: Health Plan Customer Service" >= 0.99 THEN 5
+  ELSE NULL
+END;
+show columns in MEASURE_DATA;
+/*dd1 star*/
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD COLUMN DD1_STAR INT;
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET DD1_STAR = CASE
+  WHEN "D01: Call Center Foreign Language Interpreter and TTY Availability" < 0.70 THEN 1
+  WHEN "D01: Call Center Foreign Language Interpreter and TTY Availability" >= 0.70 AND "D01: Call Center Foreign Language Interpreter and TTY Availability" < 0.85 THEN 2
+  WHEN "D01: Call Center Foreign Language Interpreter and TTY Availability" >= 0.85 AND "D01: Call Center Foreign Language Interpreter and TTY Availability" < 0.98 THEN 3
+  WHEN "D01: Call Center Foreign Language Interpreter and TTY Availability" >= 0.98 AND "D01: Call Center Foreign Language Interpreter and TTY Availability" < 1 THEN 4
+  WHEN "D01: Call Center Foreign Language Interpreter and TTY Availability" >= 1 THEN 5
+  ELSE NULL
+END
+WHERE "ORGANIZATION_TYPE" = 'PDP';
+SELECT * FROM "HEDIS"."PUBLIC"."MEASURE_DATA";
+/*filling nulls*/
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET DD1_STAR = 0
+WHERE DD1_STAR IS NULL;
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+DROP COLUMN "DD1_STAR";
+/*DD2 Star*/
+ALTER TABLE "HEDIS"."PUBLIC"."MEASURE_DATA"
+ADD COLUMN DD2_STAR INT;
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET DD2_STAR = CASE
+  WHEN "DD2: Member Complaints and Changes in the Drug Plan’s Performance" > 0.32 THEN 1
+  WHEN "DD2: Member Complaints and Changes in the Drug Plan’s Performance" > 0.2 AND "DD2: Member Complaints and Changes in the Drug Plan’s Performance" <= 0.32 THEN 2
+  WHEN "DD2: Member Complaints and Changes in the Drug Plan’s Performance" > 0.11 AND "DD2: Member Complaints and Changes in the Drug Plan’s Performance" <= 0.2 THEN 3
+  WHEN "DD2: Member Complaints and Changes in the Drug Plan’s Performance" > 0.04 AND "DD2: Member Complaints and Changes in the Drug Plan’s Performance" <= 0.11 THEN 4
+  WHEN "DD2: Member Complaints and Changes in the Drug Plan’s Performance" <= 0.04 THEN 5
+  ELSE NULL
+END
+WHERE "ORGANIZATION_TYPE" = 'PDP';
+UPDATE "HEDIS"."PUBLIC"."MEASURE_DATA"
+SET DD2_STAR = 0
+WHERE DD2_STAR IS NULL;
